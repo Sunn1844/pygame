@@ -58,18 +58,26 @@ def get_current_page_data():
 
 # 頁面狀態
 current_page: str = "menu"
+player_name: str = ""
 current_dialogue_index = 0
 show_menu = False  # 是否显示菜单
 show_question = False  # 是否显示问题
+input_active = False  # 控制輸入框是否被激活
+color_inactive = pygame.Color("gray")  # 未激活時的邊框顏色
+color_active = pygame.Color("lightskyblue")  # 激活時的邊框顏色
+input_color = color_inactive  # 初始為未激活狀態
 
 # 開始新遊戲
 def start_new_game():
     """
     開始新遊戲，重置對話進度並跳轉到第一頁。
     """
-    global current_dialogue_index
+    global current_dialogue_index, player_name, show_menu, show_question
     current_dialogue_index = 0  # 重置對話索引
-    go_to("page1")  # 跳轉到第一頁
+    player_name = ""  # 重置玩家名字
+    show_menu = False  # 隱藏菜單
+    show_question = False  # 隱藏問題
+    go_to("name_input")  # 跳轉到第一頁
 
 # 切換頁面
 def go_to(page_id):
@@ -106,20 +114,23 @@ btn_menu = ImageButton(screen_width - 70, 5, menu_button_image, lambda: toggle_m
 btn_save = Button(screen_width - 220, 80, 200, 50, "儲存遊戲進度", save_game_logic)
 btn_exit = Button(screen_width - 220, 140, 200, 50, "回到主畫面", lambda: go_to("menu"))
 btn_ok = Button(305, 420, 200, 50, "ok", lambda: go_to("page1"))
-player_name = ""
+
 def go_to_name_input():
     global current_page
     current_page = "name_input"
+
 # 新增一個名為 name_input 的頁面
 def draw_name_input_page():
     global player_name
 
     # 绘制背景
     window_surface.blit(background_images["name_input"], (0, 0))
+    
 
     # 绘制输入框
     input_box = pygame.Rect(screen_width // 2 - 150, screen_height // 2 - 20, 300, 50)
     pygame.draw.rect(window_surface, (255, 255, 255), input_box, 2)  # 绘制输入框边框
+
 
     # 绘制玩家输入的名字
     text_surface = font.render(player_name, True, (255, 255, 255))
@@ -134,21 +145,32 @@ def draw_name_input_page():
 
 # 更新事件处理逻辑
 def handle_name_input_event(event):
-    #input_box.collidepoint(event.pos)
-    global player_name
-    if event.type == pygame.KEYDOWN:
-        print(f"Pressed key: {pygame.key.name(event.key)}")
-        # 处理退格键（删除最后一个字符）
-        if event.key == pygame.K_BACKSPACE:
-            player_name = player_name[:-1]
-        # 处理回车键（可以在此处处理确认输入）
-        elif event.key == pygame.K_RETURN:
-            if player_name.strip():
-                go_to("page1")  # 用户输入名字后点击回车跳转到下一页
-        # 处理所有其他字母和数字键
+    global text, active, player_name, input_active, input_color
+    color_inactive = pygame.Color("gray")  # 未激活狀態顏色
+    input_box = pygame.Rect(screen_width // 2 - 150, screen_height // 2 - 20, 300, 50)
+    text = ""  # 儲存玩家輸入的文本
+    # 處理鼠標點擊事件
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        # 如果點擊了輸入框，則激活該框
+        if input_box.collidepoint(event.pos):
+            input_active = True  # 激活輸入框
+            input_color = color_active
         else:
-            if len(player_name) < 20:  # 限制名字长度
-                player_name += event.unicode  # 获取输入字符并添加到玩家名字
+            input_active = False  # 停止激活
+            input_color = color_inactive
+
+    # 處理鍵盤按鍵事件
+    if event.type == pygame.KEYDOWN:
+        if input_active:
+            if event.key == pygame.K_RETURN:  # 當按下回車鍵
+                player_name = text  # 儲存玩家名字
+                print(f"玩家名字是: {player_name}")
+                text = ""  # 清空輸入框中的文字
+            elif event.key == pygame.K_BACKSPACE:  # 當按下退格鍵
+                text = text[:-1]  # 刪除最後一個字符
+            else:
+                text += event.unicode  # 其他字符直接添加到輸入框中
+
 
 def handle_question_answer(user_answer, current_page_data, go_to_callback):
     # 獲取問題數據
@@ -215,8 +237,10 @@ def display_question_and_options(window_surface, dialogue_box_rect, question, fo
     """
     在對話框中顯示問題和並排選項。
     """
+
+    #question_text = f"{question['hint']}"
     # 繪製問題文本
-    question_text = f"問題：{question['text']}"
+    question_text = f"問題：{question['tet']}"
     wrapped_lines = render_text_wrapped(question_text, font, (255, 255, 255), dialogue_box_rect.width - 40)
     text_y = dialogue_box_rect.y + 20
     for line in wrapped_lines:
@@ -380,6 +404,8 @@ while running:
     elif current_page == "name_input":
         # 在 name_input 頁面時，顯示名字輸入框
         draw_name_input_page()
+        go_to_name_input()
+        handle_name_input_event(event)
     else:
         btn_menu.draw(window_surface)
 
@@ -410,9 +436,11 @@ while running:
             btn_start.handle_event(event)
             btn_load.handle_event(event)
         elif current_page == "name_input":
+            go_to_name_input()
             handle_name_input_event(event)  # 处理名字输入框的事件
             btn_ok.handle_event(event)
-            # 如果点击了OK按钮
+     
+            
             if player_name and event.type == pygame.MOUSEBUTTONDOWN and btn_ok.rect.collidepoint(event.pos):
                 go_to("page1")  # 跳转到page1，开始游戏
         else:
@@ -422,6 +450,7 @@ while running:
             if show_menu:
                 btn_save.handle_event(event)
                 btn_exit.handle_event(event)
+
 
     # 更新屏幕
     pygame.display.update()
