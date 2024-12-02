@@ -1,5 +1,6 @@
 # dialogue.py
 
+
 # 保存全域狀態
 current_page = "menu"
 current_dialogue_index = 0
@@ -45,6 +46,7 @@ def advance_dialogue(dialogues_data, go_to_callback):
         show_question = False
         if "next_page" in page_data:
             next_page = page_data["next_page"]
+            current_dialogue_index = 0
             go_to_callback(next_page)
             print(f"[調試] 跳轉到下一頁面: {next_page}")
         else:
@@ -81,3 +83,4 @@ def handle_question_click(pos, dialogues_data, go_to_callback, dialogue_box_rect
                     print("回答錯誤！")
                 show_question = False  # 無論對錯，隱藏問題
                 return
+
